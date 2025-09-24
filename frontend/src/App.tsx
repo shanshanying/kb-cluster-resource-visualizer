@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Alert, Spin, message } from 'antd';
+import { Layout, Typography, Alert, Spin, message, Switch } from 'antd';
 import ResourceSelector from './components/ResourceSelector';
 import ResourceFlow from './components/ResourceFlow';
-import { ResourceRelationship } from './types';
+import { ResourceRelationship, TreeNode } from './types';
 import apiService from './services/api';
 
 const { Header, Sider, Content } = Layout;
@@ -10,9 +10,11 @@ const { Title } = Typography;
 
 const App: React.FC = () => {
   const [relationship, setRelationship] = useState<ResourceRelationship | undefined>();
+  const [treeNodes, setTreeNodes] = useState<TreeNode[] | undefined>();
   const [loading, setLoading] = useState(false);
   const [healthStatus, setHealthStatus] = useState<'checking' | 'healthy' | 'error'>('checking');
   const [collapsed, setCollapsed] = useState(false);
+  const [useTreeLayout, setUseTreeLayout] = useState(true);
 
   useEffect(() => {
     checkHealth();
@@ -32,21 +34,47 @@ const App: React.FC = () => {
   const handleResourceSelect = async (resourceType: string, resourceName: string, namespace?: string) => {
     setLoading(true);
     try {
-      const relationshipData = await apiService.getResourceChildren(resourceType, resourceName, namespace);
-      setRelationship(relationshipData);
+      if (useTreeLayout) {
+        // Use tree structure API with selected resource as root node
+        console.log('Building resource tree with root node:', { resourceType, rootResource: resourceName, namespace });
+        const treeData = await apiService.getResourceTree(resourceType, resourceName, namespace);
+        console.log('Received tree data:', treeData);
+        setTreeNodes(treeData);
+        setRelationship(undefined); // Clear legacy data
 
-      if (relationshipData.children.length === 0) {
-        message.info(`No child resources found for ${resourceType}/${resourceName}`);
+        if (treeData.length === 0) {
+          message.info(`No resource tree found with ${resourceType}/${resourceName} as root node`);
+        } else {
+          const totalNodes = countTreeNodes(treeData);
+          message.success(`Built resource tree with ${resourceType}/${resourceName} as root containing ${totalNodes} total nodes`);
+        }
       } else {
-        message.success(`Found ${relationshipData.children.length} child resources`);
+        // Use legacy relationship API
+        const relationshipData = await apiService.getResourceChildren(resourceType, resourceName, namespace);
+        setRelationship(relationshipData);
+        setTreeNodes(undefined); // Clear tree data
+
+        if (relationshipData.children.length === 0) {
+          message.info(`No child resources found for ${resourceType}/${resourceName}`);
+        } else {
+          message.success(`Found ${relationshipData.children.length} child resources`);
+        }
       }
     } catch (error) {
-      console.error('Failed to load resource relationships:', error);
-      message.error('Failed to load resource relationships');
+      console.error('Failed to load resource data:', error);
+      message.error('Failed to load resource data');
       setRelationship(undefined);
+      setTreeNodes(undefined);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to count total nodes in tree structure
+  const countTreeNodes = (nodes: TreeNode[]): number => {
+    return nodes.reduce((count, node) => {
+      return count + 1 + countTreeNodes(node.children);
+    }, 0);
   };
 
   return (
@@ -63,32 +91,47 @@ const App: React.FC = () => {
           K8s Resource Visualizer
         </Title>
 
-        {healthStatus === 'checking' && (
-          <Spin size="small" />
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Tree Layout Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: '14px', color: '#666' }}>
+              Tree Layout:
+            </span>
+            <Switch
+              checked={useTreeLayout}
+              onChange={setUseTreeLayout}
+              checkedChildren="ON"
+              unCheckedChildren="OFF"
+            />
+          </div>
 
-        {healthStatus === 'error' && (
-          <Alert
-            message="Backend Disconnected"
-            type="error"
-            showIcon
-            style={{ margin: 0 }}
-            action={
-              <button
-                onClick={checkHealth}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#ff4d4f',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                Retry
-              </button>
-            }
-          />
-        )}
+          {healthStatus === 'checking' && (
+            <Spin size="small" />
+          )}
+
+          {healthStatus === 'error' && (
+            <Alert
+              message="Backend Disconnected"
+              type="error"
+              showIcon
+              style={{ margin: 0 }}
+              action={
+                <button
+                  onClick={checkHealth}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ff4d4f',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Retry
+                </button>
+              }
+            />
+          )}
+        </div>
       </Header>
 
       <Layout>
@@ -148,7 +191,9 @@ const App: React.FC = () => {
           ) : (
             <ResourceFlow
               relationship={relationship}
+              treeNodes={treeNodes}
               loading={loading}
+              useTreeLayout={useTreeLayout}
             />
           )}
         </Content>

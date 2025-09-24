@@ -92,12 +92,12 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
 
         <div style={{ marginBottom: 8 }}>
           {resource.namespace && (
-            <Tag color="blue" size="small">
+            <Tag color="blue">
               {resource.namespace}
             </Tag>
           )}
           {resource.status && (
-            <Tag color={getStatusColor(resource.status)} size="small">
+            <Tag color={getStatusColor(resource.status)}>
               {resource.status}
             </Tag>
           )}

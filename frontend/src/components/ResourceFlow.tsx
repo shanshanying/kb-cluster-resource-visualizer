@@ -16,7 +16,7 @@ import dagre from 'dagre';
 import 'reactflow/dist/style.css';
 
 import ResourceNodeComponent from './ResourceNode';
-import { ResourceRelationship } from '../types';
+import { ResourceRelationship, TreeNode } from '../types';
 import { FlowNode, FlowEdge } from '../types';
 
 const nodeTypes = {
@@ -45,8 +45,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
 
   nodes.forEach((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = isHorizontal ? 'left' : 'top';
-    node.sourcePosition = isHorizontal ? 'right' : 'bottom';
+    node.targetPosition = isHorizontal ? ('left' as any) : ('top' as any);
+    node.sourcePosition = isHorizontal ? ('right' as any) : ('bottom' as any);
 
     // We are shifting the dagre node position (anchor=center center) to the top left
     // so it matches the React Flow node anchor point (top left).
@@ -61,12 +61,174 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes, edges };
 };
 
+// Tree layout algorithm for hierarchical tree structure
+const getTreeLayout = (nodes: Node[], edges: Edge[], direction = 'TB') => {
+  const isHorizontal = direction === 'LR';
+
+  // Build adjacency list to understand tree structure
+  const adjacencyList: { [key: string]: string[] } = {};
+  const inDegree: { [key: string]: number } = {};
+
+  // Initialize
+  nodes.forEach(node => {
+    adjacencyList[node.id] = [];
+    inDegree[node.id] = 0;
+  });
+
+  // Build adjacency list and calculate in-degrees
+  edges.forEach(edge => {
+    adjacencyList[edge.source].push(edge.target);
+    inDegree[edge.target] = (inDegree[edge.target] || 0) + 1;
+  });
+
+  // Find root nodes (nodes with in-degree 0)
+  const roots = nodes.filter(node => inDegree[node.id] === 0);
+
+  // If no clear root, use the first node
+  const rootNode = roots.length > 0 ? roots[0] : nodes[0];
+
+  // Calculate positions using tree layout
+  const positions: { [key: string]: { x: number; y: number; level: number } } = {};
+  const levelWidth: { [level: number]: number } = {};
+
+  // BFS to assign levels
+  const queue = [{ id: rootNode.id, level: 0 }];
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const { id, level } = queue.shift()!;
+
+    if (visited.has(id)) continue;
+    visited.add(id);
+
+    // Count nodes at this level
+    levelWidth[level] = (levelWidth[level] || 0) + 1;
+
+    // Add children to queue
+    adjacencyList[id].forEach(childId => {
+      if (!visited.has(childId)) {
+        queue.push({ id: childId, level: level + 1 });
+      }
+    });
+  }
+
+  // Calculate positions
+  const levelCounters: { [level: number]: number } = {};
+  const spacing = { x: nodeWidth + 50, y: nodeHeight + 80 };
+
+  const assignPosition = (nodeId: string, level: number) => {
+    if (positions[nodeId]) return positions[nodeId];
+
+    levelCounters[level] = (levelCounters[level] || 0) + 1;
+    const nodeIndex = levelCounters[level] - 1;
+    const totalNodesAtLevel = levelWidth[level];
+
+    let x, y;
+
+    if (isHorizontal) {
+      x = level * spacing.x;
+      y = (nodeIndex - (totalNodesAtLevel - 1) / 2) * spacing.y;
+    } else {
+      x = (nodeIndex - (totalNodesAtLevel - 1) / 2) * spacing.x;
+      y = level * spacing.y;
+    }
+
+    positions[nodeId] = { x, y, level };
+    return positions[nodeId];
+  };
+
+  // Assign positions using BFS again
+  const positionQueue = [{ id: rootNode.id, level: 0 }];
+  const positionVisited = new Set<string>();
+
+  while (positionQueue.length > 0) {
+    const { id, level } = positionQueue.shift()!;
+
+    if (positionVisited.has(id)) continue;
+    positionVisited.add(id);
+
+    assignPosition(id, level);
+
+    adjacencyList[id].forEach(childId => {
+      if (!positionVisited.has(childId)) {
+        positionQueue.push({ id: childId, level: level + 1 });
+      }
+    });
+  }
+
+  // Apply positions to nodes
+  nodes.forEach(node => {
+    const pos = positions[node.id] || { x: 0, y: 0, level: 0 };
+    node.position = { x: pos.x, y: pos.y };
+    node.targetPosition = isHorizontal ? ('left' as any) : ('top' as any);
+    node.sourcePosition = isHorizontal ? ('right' as any) : ('bottom' as any);
+
+    // Add level information to node data
+    node.data = {
+      ...node.data,
+      level: pos.level,
+      isRoot: pos.level === 0,
+    };
+  });
+
+  return { nodes, edges };
+};
+
+// Convert tree structure to React Flow nodes and edges
+const convertTreeToFlow = (treeNodes: TreeNode[]): { nodes: FlowNode[], edges: FlowEdge[] } => {
+  const flowNodes: FlowNode[] = [];
+  const flowEdges: FlowEdge[] = [];
+
+  const processNode = (treeNode: TreeNode, level: number = 0, isRoot: boolean = false) => {
+    // Add the current node
+    flowNodes.push({
+      id: treeNode.resource.uid,
+      type: 'resourceNode',
+      position: { x: 0, y: 0 }, // Will be set by layout algorithm
+      data: {
+        resource: treeNode.resource,
+        isParent: isRoot,
+        level: level,
+        isRoot: isRoot,
+      },
+    });
+
+    // Process children and create edges
+    treeNode.children.forEach(childNode => {
+      // Create edge from parent to child
+      flowEdges.push({
+        id: `${treeNode.resource.uid}-${childNode.resource.uid}`,
+        source: treeNode.resource.uid,
+        target: childNode.resource.uid,
+        type: 'smoothstep',
+      });
+
+      // Recursively process child
+      processNode(childNode, level + 1, false);
+    });
+  };
+
+  // Process all root nodes (should typically be just one)
+  treeNodes.forEach((rootNode) => {
+    processNode(rootNode, 0, true);
+  });
+
+  return { nodes: flowNodes, edges: flowEdges };
+};
+
 interface ResourceFlowProps {
   relationship?: ResourceRelationship;
+  treeNodes?: TreeNode[];
   loading?: boolean;
+  useTreeLayout?: boolean;
 }
 
-const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) => {
+const ResourceFlow: React.FC<ResourceFlowProps> = ({
+  relationship,
+  treeNodes,
+  loading,
+  useTreeLayout = false
+}) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [layoutDirection, setLayoutDirection] = useState<'TB' | 'LR'>('TB');
@@ -77,6 +239,25 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) =>
   );
 
   useEffect(() => {
+    // Handle tree structure data
+    if (useTreeLayout && treeNodes && treeNodes.length > 0) {
+      console.log('Processing tree nodes in ResourceFlow:', treeNodes);
+      const { nodes: flowNodes, edges: flowEdges } = convertTreeToFlow(treeNodes);
+      console.log('Converted to flow nodes:', flowNodes.length, 'edges:', flowEdges.length);
+
+      // Apply tree layout
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getTreeLayout(
+        flowNodes,
+        flowEdges,
+        layoutDirection
+      );
+
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+      return;
+    }
+
+    // Handle legacy relationship data
     if (!relationship) {
       setNodes([]);
       setEdges([]);
@@ -96,7 +277,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) =>
           isParent: true,
         },
       },
-      ...children.map((child, index) => ({
+      ...children.map((child) => ({
         id: child.uid,
         type: 'resourceNode',
         position: { x: 0, y: 0 },
@@ -116,15 +297,13 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) =>
     }));
 
     // Apply layout
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      flowNodes,
-      flowEdges,
-      layoutDirection
-    );
+    const { nodes: layoutedNodes, edges: layoutedEdges } = useTreeLayout
+      ? getTreeLayout(flowNodes, flowEdges, layoutDirection)
+      : getLayoutedElements(flowNodes, flowEdges, layoutDirection);
 
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [relationship, layoutDirection, setNodes, setEdges]);
+  }, [relationship, treeNodes, useTreeLayout, layoutDirection, setNodes, setEdges]);
 
   const onLayout = useCallback(
     (direction: 'TB' | 'LR') => {
@@ -148,7 +327,12 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) =>
     );
   }
 
-  if (!relationship || relationship.children.length === 0) {
+  // Check if we have data to display
+  const hasData = useTreeLayout
+    ? (treeNodes && treeNodes.length > 0)
+    : (relationship && relationship.children.length > 0);
+
+  if (!hasData) {
     return (
       <div style={{
         height: '100%',
@@ -158,9 +342,11 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) =>
         fontSize: 16,
         color: '#666'
       }}>
-        {relationship
-          ? 'No child resources found with ownerReference relationships.'
-          : 'Select a resource to visualize its relationships.'
+        {useTreeLayout
+          ? (treeNodes ? 'No resource tree found.' : 'Select a resource to use as root node for the tree visualization.')
+          : (relationship
+              ? 'No child resources found with ownerReference relationships.'
+              : 'Select a resource to visualize its relationships.')
         }
       </div>
     );
@@ -200,6 +386,9 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({ relationship, loading }) =>
           borderRadius: '4px',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
         }}>
+          <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
+            Layout: {useTreeLayout ? 'Tree' : 'Dagre'}
+          </div>
           <button
             onClick={() => onLayout('TB')}
             style={{

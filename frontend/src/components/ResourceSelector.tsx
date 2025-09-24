@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Select, Button, Card, List, Typography, Space, Tag, message } from 'antd';
+import { Select, Button, Card, List, Typography, Space, Tag, message } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ResourceNode } from '../types';
 import apiService from '../services/api';
@@ -13,6 +13,7 @@ interface ResourceSelectorProps {
 }
 
 const COMMON_RESOURCE_TYPES = [
+  // Standard Kubernetes resources
   'deployment',
   'replicaset',
   'statefulset',
@@ -24,12 +25,22 @@ const COMMON_RESOURCE_TYPES = [
   'configmap',
   'secret',
   'ingress',
-  'persistentvolumeclaim'
+  'persistentvolumeclaim',
+
+  // KubeBlocks custom resources
+  'cluster',
+  'component',
+  'backuppolicy',
+  'backup',
+  'backupschedule',
+  'restore',
+  'opsrequest',
+  'instance',
+  'instanceset'
 ];
 
 const ResourceSelector: React.FC<ResourceSelectorProps> = ({
-  onResourceSelect,
-  loading = false
+  onResourceSelect
 }) => {
   const [resourceType, setResourceType] = useState<string>('deployment');
   const [namespace, setNamespace] = useState<string>('');
@@ -175,11 +186,10 @@ const ResourceSelector: React.FC<ResourceSelectorProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>{resource.name}</span>
                     {resource.namespace && (
-                      <Tag size="small" color="blue">{resource.namespace}</Tag>
+                      <Tag color="blue">{resource.namespace}</Tag>
                     )}
                     {resource.status && (
                       <Tag
-                        size="small"
                         color={
                           resource.status.toLowerCase() === 'running' || resource.status.toLowerCase() === 'ready'
                             ? 'green'

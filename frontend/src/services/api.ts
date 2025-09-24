@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ResourceNode, ResourceRelationship } from '../types';
+import { ResourceNode, ResourceRelationship, TreeNode } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -28,10 +28,17 @@ export const apiService = {
     return response.data;
   },
 
-  // Get resource children (ownerReference relationships)
+  // Get resource children (ownerReference relationships) - Legacy API
   async getResourceChildren(resourceType: string, resourceName: string, namespace?: string): Promise<ResourceRelationship> {
     const params = namespace ? { namespace } : {};
     const response = await api.get(`/resources/${resourceType}/${resourceName}/children`, { params });
+    return response.data;
+  },
+
+  // Get resource tree with specified resource as root node
+  async getResourceTree(resourceType: string, rootResourceName: string, namespace?: string): Promise<TreeNode[]> {
+    const params = namespace ? { namespace } : {};
+    const response = await api.get(`/resources/${resourceType}/${rootResourceName}/tree`, { params });
     return response.data;
   },
 };

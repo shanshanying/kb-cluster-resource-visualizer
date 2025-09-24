@@ -15,6 +15,11 @@ export interface ResourceRelationship {
   children: ResourceNode[];
 }
 
+export interface TreeNode {
+  resource: ResourceNode;
+  children: TreeNode[];
+}
+
 export interface FlowNode {
   id: string;
   type: string;
@@ -22,6 +27,8 @@ export interface FlowNode {
   data: {
     resource: ResourceNode;
     isParent?: boolean;
+    level?: number;
+    isRoot?: boolean;
   };
 }
 
