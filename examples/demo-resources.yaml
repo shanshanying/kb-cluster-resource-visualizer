@@ -1,0 +1,186 @@
+# Demo resources to test the K8s Resource Visualizer
+# Apply with: kubectl apply -f demo-resources.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: default
+  labels:
+    app: demo-app
+    tier: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+        tier: frontend
+    spec:
+      containers:
+      - name: demo-container
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        env:
+        - name: DEMO_ENV
+          value: "test"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-service
+  namespace: default
+  labels:
+    app: demo-app
+spec:
+  selector:
+    app: demo-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: default
+  labels:
+    app: demo-app
+data:
+  config.json: |
+    {
+      "environment": "demo",
+      "debug": true,
+      "features": {
+        "feature1": true,
+        "feature2": false
+      }
+    }
+  app.properties: |
+    app.name=demo-app
+    app.version=1.0.0
+    log.level=INFO
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-secret
+  namespace: default
+  labels:
+    app: demo-app
+type: Opaque
+data:
+  username: ZGVtby11c2Vy  # demo-user (base64)
+  password: ZGVtby1wYXNz  # demo-pass (base64)
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-job
+  namespace: default
+  labels:
+    app: demo-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: demo-job
+    spec:
+      containers:
+      - name: demo-job-container
+        image: busybox:1.35
+        command: ['sh', '-c', 'echo "Demo job running..." && sleep 30 && echo "Demo job completed!"']
+      restartPolicy: Never
+  backoffLimit: 4
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: demo-cronjob
+  namespace: default
+  labels:
+    app: demo-cronjob
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: demo-cronjob
+        spec:
+          containers:
+          - name: demo-cronjob-container
+            image: busybox:1.35
+            command: ['sh', '-c', 'date && echo "Scheduled task executed"']
+          restartPolicy: OnFailure
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-statefulset
+  namespace: default
+  labels:
+    app: demo-stateful
+spec:
+  serviceName: demo-stateful-service
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-stateful
+  template:
+    metadata:
+      labels:
+        app: demo-stateful
+    spec:
+      containers:
+      - name: demo-stateful-container
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: demo-storage
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: demo-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-stateful-service
+  namespace: default
+  labels:
+    app: demo-stateful
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: demo-stateful
