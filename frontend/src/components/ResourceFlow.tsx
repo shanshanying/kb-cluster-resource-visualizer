@@ -23,6 +23,13 @@ const nodeTypes = {
   resourceNode: ResourceNodeComponent,
 };
 
+// Helper function to count total nodes in tree structure
+const countTreeNodes = (nodes: TreeNode[]): number => {
+  return nodes.reduce((count, node) => {
+    return count + 1 + countTreeNodes(node.children);
+  }, 0);
+};
+
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
@@ -180,13 +187,26 @@ const convertTreeToFlow = (treeNodes: TreeNode[]): { nodes: FlowNode[], edges: F
   const flowEdges: FlowEdge[] = [];
 
   const processNode = (treeNode: TreeNode, level: number = 0, isRoot: boolean = false) => {
+    // Convert new format to legacy ResourceNode for compatibility
+    const legacyResource = {
+      name: treeNode.resource.metadata.name,
+      kind: treeNode.resource.kind,
+      apiVersion: treeNode.resource.apiVersion,
+      namespace: treeNode.resource.metadata.namespace,
+      uid: treeNode.resource.metadata.uid,
+      labels: treeNode.resource.metadata.labels,
+      annotations: treeNode.resource.metadata.annotations,
+      creationTime: treeNode.resource.metadata.creationTimestamp,
+      status: treeNode.resource.status ? 'Running' : 'Unknown', // Simplified status mapping
+    };
+
     // Add the current node
     flowNodes.push({
-      id: treeNode.resource.uid,
+      id: treeNode.resource.metadata.uid,
       type: 'resourceNode',
       position: { x: 0, y: 0 }, // Will be set by layout algorithm
       data: {
-        resource: treeNode.resource,
+        resource: legacyResource,
         isParent: isRoot,
         level: level,
         isRoot: isRoot,
@@ -197,9 +217,9 @@ const convertTreeToFlow = (treeNodes: TreeNode[]): { nodes: FlowNode[], edges: F
     treeNode.children.forEach(childNode => {
       // Create edge from parent to child
       flowEdges.push({
-        id: `${treeNode.resource.uid}-${childNode.resource.uid}`,
-        source: treeNode.resource.uid,
-        target: childNode.resource.uid,
+        id: `${treeNode.resource.metadata.uid}-${childNode.resource.metadata.uid}`,
+        source: treeNode.resource.metadata.uid,
+        target: childNode.resource.metadata.uid,
         type: 'smoothstep',
       });
 
@@ -387,34 +407,43 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
         }}>
           <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
-            Layout: {useTreeLayout ? 'Tree' : 'Dagre'}
+            🌳 Layout: {useTreeLayout ? 'Tree Structure' : 'Dagre'}
+            {useTreeLayout && treeNodes && treeNodes.length > 0 && (
+              <div style={{ marginTop: '4px', fontSize: '11px', color: '#999' }}>
+                📊 {countTreeNodes(treeNodes)} nodes
+              </div>
+            )}
           </div>
           <button
             onClick={() => onLayout('TB')}
             style={{
               marginRight: 8,
-              padding: '4px 8px',
-              border: '1px solid #d9d9d9',
-              background: layoutDirection === 'TB' ? '#1890ff' : 'white',
-              color: layoutDirection === 'TB' ? 'white' : 'black',
+              padding: '4px 10px',
+              border: layoutDirection === 'TB' ? '2px solid #1890ff' : '1px solid #d9d9d9',
+              background: layoutDirection === 'TB' ? '#e6f7ff' : 'white',
+              color: layoutDirection === 'TB' ? '#1890ff' : '#666',
               borderRadius: '4px',
               cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: layoutDirection === 'TB' ? '500' : 'normal',
             }}
           >
-            Vertical
+            ⬇️ Vertical
           </button>
           <button
             onClick={() => onLayout('LR')}
             style={{
-              padding: '4px 8px',
-              border: '1px solid #d9d9d9',
-              background: layoutDirection === 'LR' ? '#1890ff' : 'white',
-              color: layoutDirection === 'LR' ? 'white' : 'black',
+              padding: '4px 10px',
+              border: layoutDirection === 'LR' ? '2px solid #1890ff' : '1px solid #d9d9d9',
+              background: layoutDirection === 'LR' ? '#e6f7ff' : 'white',
+              color: layoutDirection === 'LR' ? '#1890ff' : '#666',
               borderRadius: '4px',
               cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: layoutDirection === 'LR' ? '500' : 'normal',
             }}
           >
-            Horizontal
+            ➡️ Horizontal
           </button>
         </div>
       </ReactFlow>

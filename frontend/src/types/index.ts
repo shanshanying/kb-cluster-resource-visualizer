@@ -16,7 +16,19 @@ export interface ResourceRelationship {
 }
 
 export interface TreeNode {
-  resource: ResourceNode;
+  resource: {
+    metadata: {
+      name: string;
+      namespace?: string;
+      uid: string;
+      labels?: Record<string, string>;
+      annotations?: Record<string, string>;
+      creationTimestamp: string;
+    };
+    kind: string;
+    apiVersion: string;
+    status?: any;
+  };
   children: TreeNode[];
 }
 

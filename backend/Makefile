@@ -1,99 +1,116 @@
-.PHONY: test test-verbose test-coverage test-race test-integration bench clean
+# K8s Resource Visualizer Backend Makefile
 
-# Run all tests
-test:
-	go test -v ./...
+.PHONY: fmt lint test build run deps clean dev test-tree help
 
-# Run tests with verbose output
-test-verbose:
-	go test -v -race ./...
-
-# Run tests with coverage
-test-coverage:
-	go test -v -race -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
-
-# Run tests with race detection
-test-race:
-	go test -v -race ./...
-
-# Run only integration tests
-test-integration:
-	go test -v -run Integration ./...
-
-# Run only unit tests (exclude integration tests)
-test-unit:
-	go test -v -run "^((?!Integration).)*$$" ./...
-
-# Run benchmarks
-bench:
-	go test -bench=. -benchmem ./...
-
-# Run performance tests
-perf:
-	go test -v -run "Performance" ./...
-
-# Run benchmarks with CPU profiling
-bench-profile:
-	go test -bench=. -benchmem -cpuprofile=cpu.prof ./...
-	@echo "CPU profile saved to cpu.prof"
-
-# Run specific test
-test-specific:
-	go test -v -run $(TEST) ./...
-
-# Clean test artifacts
-clean:
-	rm -f coverage.out coverage.html
+# Default target
+all: deps fmt lint build
 
 # Format code
 fmt:
+	@echo "🎨 Formatting Go code..."
 	go fmt ./...
 
 # Run linter
 lint:
-	golangci-lint run
+	@echo "🔍 Running linter..."
+	golangci-lint run || echo "⚠️  Install golangci-lint for better linting"
 
-# Run tests and generate coverage report
-coverage: test-coverage
+# Run tests
+test:
+	@echo "🧪 Running tests..."
+	go test -v ./...
+
+# Run tests with coverage
+test-coverage:
+	@echo "📊 Running tests with coverage..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
-# Build the application
+# Build the application with new resource tree support
 build:
-	go build -o bin/k8s-resource-visualizer .
+	@echo "🔨 Building application..."
+	go build -o bin/k8s-resource-visualizer main.go resource_tree.go
 
-# Run the application
+# Run the application in development mode
 run:
-	go run .
+	@echo "🚀 Starting development server..."
+	go run main.go resource_tree.go
+
+# Development mode with auto-reload (requires air)
+dev:
+	@echo "🔄 Starting development mode with auto-reload..."
+	@if command -v air >/dev/null 2>&1; then \
+		air; \
+	else \
+		echo "📦 Installing air for auto-reload..."; \
+		go install github.com/cosmtrek/air@latest; \
+		air; \
+	fi
 
 # Install dependencies
 deps:
+	@echo "📦 Installing dependencies..."
+	go mod tidy
 	go mod download
-	go mod tidy
 
-# Update dependencies
-update-deps:
-	go get -u ./...
-	go mod tidy
+# Clean build artifacts
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+	go clean
 
+# Test the new tree API functionality
+test-tree:
+	@echo "🌳 Testing tree API functionality..."
+	@if [ -f "../test-complete-tree-structure.sh" ]; then \
+		cd .. && ./test-complete-tree-structure.sh; \
+	else \
+		echo "❌ Tree test script not found. Please run from project root."; \
+	fi
+
+# Docker build
+docker-build:
+	@echo "🐳 Building Docker image..."
+	docker build -t k8s-resource-visualizer:latest .
+
+# Docker run
+docker-run:
+	@echo "🐳 Running Docker container..."
+	docker run -p 8080:8080 k8s-resource-visualizer:latest
+
+# Performance benchmark
+benchmark:
+	@echo "⚡ Running performance benchmarks..."
+	go test -bench=. -benchmem ./...
+
+# Check Go version and dependencies
+check-env:
+	@echo "🔍 Checking environment..."
+	@echo "Go version: $$(go version)"
+	@echo "GOPATH: $$(go env GOPATH)"
+	@echo "GOROOT: $$(go env GOROOT)"
+	@kubectl version --client --short 2>/dev/null || echo "⚠️  kubectl not found"
+
+# Help
 help:
+	@echo "🛠️  K8s Resource Visualizer Backend Makefile"
+	@echo ""
 	@echo "Available targets:"
-	@echo "  test            - Run all tests"
-	@echo "  test-verbose    - Run tests with verbose output and race detection"
-	@echo "  test-coverage   - Run tests with coverage report"
-	@echo "  test-race       - Run tests with race detection"
-	@echo "  test-integration- Run only integration tests"
-	@echo "  test-unit       - Run only unit tests"
-	@echo "  bench           - Run benchmarks"
-	@echo "  perf            - Run performance tests"
-	@echo "  bench-profile   - Run benchmarks with CPU profiling"
-	@echo "  test-specific   - Run specific test (use TEST=TestName)"
-	@echo "  clean           - Clean test artifacts"
-	@echo "  fmt             - Format code"
-	@echo "  lint            - Run linter"
-	@echo "  coverage        - Generate coverage report"
-	@echo "  build           - Build the application"
-	@echo "  run             - Run the application"
-	@echo "  deps            - Install dependencies"
-	@echo "  update-deps     - Update dependencies"
-	@echo "  help            - Show this help message"
+	@echo "  all          - Run deps, fmt, lint, and build"
+	@echo "  fmt          - Format Go code"
+	@echo "  lint         - Run linter"
+	@echo "  test         - Run tests"
+	@echo "  test-coverage - Run tests with coverage report"
+	@echo "  build        - Build the application"
+	@echo "  run          - Run the application"
+	@echo "  dev          - Run in development mode with auto-reload"
+	@echo "  deps         - Install dependencies"
+	@echo "  clean        - Clean build artifacts"
+	@echo "  test-tree    - Test the new tree API functionality"
+	@echo "  docker-build - Build Docker image"
+	@echo "  docker-run   - Run Docker container"
+	@echo "  benchmark    - Run performance benchmarks"
+	@echo "  check-env    - Check environment setup"
+	@echo "  help         - Show this help message"
