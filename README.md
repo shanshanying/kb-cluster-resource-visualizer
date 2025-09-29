@@ -1,46 +1,50 @@
-# K8s Resource Visualizer
+# KB Cluster Resource Visualizer
 
-一个受 ArgoCD UI 启发的 Kubernetes 资源可视化工具，使用 React TypeScript 前端和 Go 后端构建。
+A Kubernetes resource visualization tool inspired by ArgoCD UI, built with React TypeScript frontend and Go backend.
 
-## ✨ 功能特性
+## ✨ Features
 
-- 🔍 输入资源类型，可视化所有具有 ownerReference 关系的资源
-- 🎨 现代化 Web 界面，支持交互式资源关系图
-- ⚡ 实时连接 K8s 集群
-- 📊 支持所有 Kubernetes 资源类型
-- 🔄 自动布局算法（垂直/水平）
-- 🏷️ 丰富的资源信息展示（状态、标签、命名空间等）
+- 🔍 **Resource Tree Visualization**: Visualize all resources with ownerReference relationships
+- 🎨 **Modern Web Interface**: Interactive resource relationship graphs with drag & drop
+- ⚡ **Real-time K8s Connection**: Live connection to Kubernetes clusters
+- 📊 **Comprehensive Resource Support**: Support for all Kubernetes and KubeBlocks resource types
+- 🎯 **Advanced Layout Algorithms**: Multiple tree layout algorithms (Hierarchical, Reingold-Tilford)
+- 🏷️ **Rich Resource Information**: Status, labels, namespaces, and detailed metadata
+- 🌈 **Resource Type Coloring**: Color-coded nodes based on resource categories
+- 📱 **Responsive Design**: Optimized for different screen sizes and resolutions
+- 🔧 **Layout Controls**: Vertical/horizontal layouts with customizable spacing
 
-## 🏗️ 技术架构
+## 🏗️ Tech Stack
 
-- **前端**: React + TypeScript + Vite + Ant Design + React Flow
-- **后端**: Go + Gin + client-go
-- **可视化**: React Flow 交互式图表
-- **容器化**: Docker + Docker Compose
+- **Frontend**: React + TypeScript + Vite + Ant Design + React Flow
+- **Backend**: Go + Gin + client-go
+- **Visualization**: React Flow interactive diagrams
+- **Containerization**: Docker + Docker Compose
+- **Layout Algorithms**: Custom Reingold-Tilford implementation + Hierarchical layout
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 📋 先决条件
+### 📋 Prerequisites
 
 - Go 1.21+
 - Node.js 18+
-- 可访问的 Kubernetes 集群
-- kubectl 已配置
+- Accessible Kubernetes cluster
+- kubectl configured
 
-### 🎯 一键启动
+### 🎯 One-Click Start
 
 ```bash
-# 克隆项目
+# Clone the project
 git clone <your-repo-url>
-cd k8s-resource-visualizer
+cd kb-cluster-resource-visualizer
 
-# 使用启动脚本
+# Use the startup script
 ./scripts/start.sh
 ```
 
-### 🔧 手动启动
+### 🔧 Manual Setup
 
-#### 后端设置
+#### Backend Setup
 
 ```bash
 cd backend
@@ -48,7 +52,7 @@ go mod tidy
 go run main.go
 ```
 
-#### 前端设置
+#### Frontend Setup
 
 ```bash
 cd frontend
@@ -56,90 +60,115 @@ npm install
 npm run dev
 ```
 
-### 🐳 Docker 启动
+### 🐳 Docker Setup
 
 ```bash
-# 确保 ~/.kube/config 存在并可访问
+# Ensure ~/.kube/config exists and is accessible
 docker-compose up -d
 ```
 
-## 📖 使用说明
+## 📖 Usage Guide
 
-1. **启动服务**: 运行前后端服务
-2. **打开浏览器**: 访问 http://localhost:5173
-3. **选择资源类型**: 从下拉菜单选择资源类型（如 Deployment、Pod 等）
-4. **选择命名空间**: 可选择特定命名空间或查看所有命名空间
-5. **选择资源**: 点击左侧列表中的资源
-6. **查看关系图**: 右侧将显示该资源的 ownerReference 关系图
+1. **Start Services**: Run both frontend and backend services
+2. **Open Browser**: Navigate to http://localhost:5173
+3. **Select Resource Type**: Choose resource type from dropdown (e.g., Deployment, Pod, etc.)
+4. **Select Namespace**: Choose specific namespace or view all namespaces
+5. **Select Resource**: Click on resources in the left panel
+6. **View Relationship Graph**: The right panel will display the ownerReference relationship tree
+7. **Customize Layout**: Choose between different layout algorithms and orientations
+8. **Explore Nodes**: Hover over nodes to see detailed resource information
 
-## 🔌 API 接口
+## 🔌 API Endpoints
 
-- `GET /api/health` - 健康检查
-- `GET /api/namespaces` - 获取所有命名空间
-- `GET /api/resources/:type` - 获取指定类型的所有资源
-- `GET /api/resources/:type/:name/children` - 获取指定资源拥有的所有子资源
+- `GET /api/health` - Health check
+- `GET /api/namespaces` - Get all namespaces
+- `GET /api/resources/:type` - Get all resources of specified type
+- `GET /api/tree` - Get resource tree with ownerReference relationships
 
-### 请求示例
+### Request Examples
 
 ```bash
-# 获取所有 Deployment
+# Get all Deployments
 curl "http://localhost:8080/api/resources/deployment"
 
-# 获取特定命名空间的 Pod
+# Get Pods in specific namespace
 curl "http://localhost:8080/api/resources/pod?namespace=default"
 
-# 获取 Deployment 的子资源
-curl "http://localhost:8080/api/resources/deployment/my-app/children?namespace=default"
+# Get resource tree starting from a specific resource
+curl "http://localhost:8080/api/tree?resource=deployment&name=my-app&namespace=default"
 ```
 
-## 🎨 界面预览
+## 🎨 UI Overview
 
-### 主界面
-- 左侧：资源选择器，支持资源类型和命名空间筛选
-- 右侧：交互式资源关系图，支持拖拽和缩放
+### Main Interface
+- **Left Panel**: Resource selector with resource type and namespace filtering
+- **Right Panel**: Interactive resource relationship graph with drag & zoom support
+- **Control Panel**: Layout algorithm selector and orientation controls
 
-### 资源节点
-- 显示资源名称、类型、状态
-- 支持命名空间标签和状态标签
-- 鼠标悬停显示详细信息
+### Resource Nodes
+- **Color-coded by Type**: Different colors for workload, network, config, storage resources
+- **Rich Information**: Resource name, type, status, and metadata
+- **Interactive**: Hover for detailed information tooltips
+- **Status Indicators**: Visual status badges and KubeBlocks role labels
 
-### 布局控制
-- 垂直布局：适合层级关系展示
-- 水平布局：适合并行关系展示
+### Layout Controls
+- **Multiple Algorithms**: Hierarchical and Reingold-Tilford tree layouts
+- **Orientation**: Vertical layout for hierarchy, horizontal for parallel relationships
+- **Customizable Spacing**: Adjustable node and layer spacing for optimal viewing
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
-k8s-resource-visualizer/
-├── backend/                 # Go 后端
-│   ├── main.go             # 主程序
-│   ├── go.mod              # Go 模块文件
-│   └── Dockerfile          # 后端 Docker 配置
-├── frontend/               # React 前端
+kb-cluster-resource-visualizer/
+├── backend/                 # Go backend
+│   ├── main.go             # Main application
+│   ├── resource_tree.go    # Resource tree building logic
+│   ├── go.mod              # Go module file
+│   └── Dockerfile          # Backend Docker config
+├── frontend/               # React frontend
 │   ├── src/
-│   │   ├── components/     # React 组件
-│   │   ├── services/       # API 服务
-│   │   ├── types/          # TypeScript 类型定义
-│   │   └── App.tsx         # 主应用组件
-│   ├── package.json        # NPM 配置
-│   └── Dockerfile          # 前端 Docker 配置
+│   │   ├── components/     # React components
+│   │   │   ├── ResourceFlow.tsx     # Main visualization component
+│   │   │   ├── ResourceNode.tsx     # Individual resource node
+│   │   │   └── ResourceSelector.tsx # Resource selection panel
+│   │   ├── services/       # API services
+│   │   ├── types/          # TypeScript type definitions
+│   │   ├── utils/          # Layout algorithms
+│   │   └── App.tsx         # Main application component
+│   ├── package.json        # NPM configuration
+│   └── Dockerfile          # Frontend Docker config
 ├── scripts/
-│   └── start.sh            # 启动脚本
-├── docker-compose.yml      # Docker Compose 配置
-└── README.md               # 项目文档
+│   └── start.sh            # Startup script
+├── docker-compose.yml      # Docker Compose configuration
+└── README.md               # Project documentation
 ```
 
-## 🔍 支持的资源类型
+## 🔍 Supported Resource Types
 
-- **工作负载**: Deployment, ReplicaSet, StatefulSet, DaemonSet, Pod, Job, CronJob
-- **服务**: Service, Ingress
-- **配置**: ConfigMap, Secret
-- **存储**: PersistentVolumeClaim
-- **其他**: 所有标准 Kubernetes 资源
+### Kubernetes Resources
+- 🔵 **Workload**: Deployment, ReplicaSet, StatefulSet, DaemonSet, Pod, Job, CronJob
+- 🟣 **Network**: Service, Ingress, NetworkPolicy
+- 🟡 **Configuration**: ConfigMap, Secret
+- 🟢 **Storage**: PersistentVolumeClaim, PersistentVolume, StorageClass
 
-## 🛠️ 开发说明
+### KubeBlocks Resources
+- 🩵 **Cluster Management**: Cluster, Component, Instance, InstanceSet
+- 🟤 **Backup & Restore**: Backup, BackupPolicy, BackupSchedule, Restore
+- 🩷 **Operations**: OpsRequest
 
-### 后端开发
+### Color Coding
+Each resource type is color-coded for easy identification:
+- Blue for workload resources
+- Purple for network resources
+- Yellow for configuration resources
+- Green for storage resources
+- Cyan for KubeBlocks cluster resources
+- Brown for backup resources
+- Pink for operation resources
+
+## 🛠️ Development Guide
+
+### Backend Development
 
 ```bash
 cd backend
@@ -147,7 +176,12 @@ go mod tidy
 go run main.go
 ```
 
-### 前端开发
+The backend features:
+- **Resource Pool Optimization**: Efficient tree building with O(n) complexity
+- **Dynamic Resource Discovery**: Support for custom resource types
+- **RESTful API**: Clean API design with proper error handling
+
+### Frontend Development
 
 ```bash
 cd frontend
@@ -155,83 +189,62 @@ npm install
 npm run dev
 ```
 
-### 构建生产版本
+The frontend features:
+- **Advanced Layout Algorithms**: Reingold-Tilford and Hierarchical layouts
+- **Resource Type Coloring**: Automatic color coding based on resource categories
+- **Interactive Controls**: Layout algorithm selection and orientation controls
+- **Responsive Design**: Optimized for different screen sizes
+
+### Build Production Version
 
 ```bash
-# 后端
+# Backend
 cd backend
-go build -o k8s-visualizer main.go
+go build -o kb-cluster-resource-visualizer main.go
 
-# 前端
+# Frontend
 cd frontend
 npm run build
 ```
 
-## 🔧 配置说明
+## 🔧 Configuration
 
-### 环境变量
+### Environment Variables
 
-- `KUBECONFIG`: Kubernetes 配置文件路径（默认: `~/.kube/config`）
-- `PORT`: 后端服务端口（默认: 8080）
+- `KUBECONFIG`: Kubernetes config file path (default: `~/.kube/config`)
+- `PORT`: Backend service port (default: 8080)
 
-### Kubernetes 权限
+### Kubernetes Permissions
 
-确保您的 Kubernetes 用户/服务账户具有以下权限：
+Ensure your Kubernetes user/service account has the following permissions:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: k8s-resource-visualizer
+  name: kb-cluster-resource-visualizer
 rules:
 - apiGroups: ["*"]
   resources: ["*"]
   verbs: ["get", "list"]
 ```
 
-## 🚨 故障排除
+### Layout Algorithm Configuration
 
-### 常见问题
+The application supports multiple layout algorithms:
+- **Hierarchical**: Simple layered layout, good for small trees
+- **Reingold-Tilford**: Optimal tree layout with no edge crossings, perfect for complex trees
+- **Customizable Spacing**: Adjustable node and layer spacing (currently 280px layer spacing, 140px node spacing)
 
-1. **无法连接到 Kubernetes 集群**
-   - 检查 `kubectl cluster-info` 是否正常
-   - 确认 kubeconfig 文件路径正确
-
-2. **后端 API 连接失败**
-   - 确认后端服务在 8080 端口运行
-   - 检查防火墙设置
-
-3. **前端显示空白页面**
-   - 检查浏览器控制台错误信息
-   - 确认后端 API 可访问
-
-### 日志查看
+### Logging
 
 ```bash
-# 后端日志
+# Backend logs
 cd backend && go run main.go
 
-# 前端日志
+# Frontend logs
 cd frontend && npm run dev
 
-# Docker 日志
+# Docker logs
 docker-compose logs -f
 ```
-
-## 🤝 贡献指南
-
-1. Fork 本项目
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 🙏 致谢
-
-- 感谢 [ArgoCD](https://argoproj.github.io/argo-cd/) 项目的设计灵感
-- 感谢 [React Flow](https://reactflow.dev/) 提供的优秀可视化组件
-- 感谢 [client-go](https://github.com/kubernetes/client-go) 提供的 Kubernetes 客户端库

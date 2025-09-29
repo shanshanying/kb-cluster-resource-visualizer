@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
-  Node,
-  Edge,
   addEdge,
   ConnectionMode,
   useNodesState,
@@ -17,6 +15,8 @@ import 'reactflow/dist/style.css';
 import ResourceNodeComponent from './ResourceNode';
 import { TreeNode } from '../types';
 import { FlowNode, FlowEdge } from '../types';
+import { LayoutAlgorithm } from '../App';
+import { createLayoutEngine, LayoutConfig } from '../utils/layoutAlgorithms';
 
 const nodeTypes = {
   resourceNode: ResourceNodeComponent,
@@ -30,122 +30,10 @@ const countTreeNodes = (nodes: TreeNode[]): number => {
 };
 
 
-const nodeWidth = 280;
-const nodeHeight = 140;
+// Node dimensions moved to layoutAlgorithms.ts
 
 
-// Tree layout algorithm for hierarchical tree structure
-const getTreeLayout = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  const isHorizontal = direction === 'LR';
-
-  // Build adjacency list to understand tree structure
-  const adjacencyList: { [key: string]: string[] } = {};
-  const inDegree: { [key: string]: number } = {};
-
-  // Initialize
-  nodes.forEach(node => {
-    adjacencyList[node.id] = [];
-    inDegree[node.id] = 0;
-  });
-
-  // Build adjacency list and calculate in-degrees
-  edges.forEach(edge => {
-    adjacencyList[edge.source].push(edge.target);
-    inDegree[edge.target] = (inDegree[edge.target] || 0) + 1;
-  });
-
-  // Find root nodes (nodes with in-degree 0)
-  const roots = nodes.filter(node => inDegree[node.id] === 0);
-
-  // If no clear root, use the first node
-  const rootNode = roots.length > 0 ? roots[0] : nodes[0];
-
-  // Calculate positions using tree layout
-  const positions: { [key: string]: { x: number; y: number; level: number } } = {};
-  const levelWidth: { [level: number]: number } = {};
-
-  // BFS to assign levels
-  const queue = [{ id: rootNode.id, level: 0 }];
-  const visited = new Set<string>();
-
-  while (queue.length > 0) {
-    const { id, level } = queue.shift()!;
-
-    if (visited.has(id)) continue;
-    visited.add(id);
-
-    // Count nodes at this level
-    levelWidth[level] = (levelWidth[level] || 0) + 1;
-
-    // Add children to queue
-    adjacencyList[id].forEach(childId => {
-      if (!visited.has(childId)) {
-        queue.push({ id: childId, level: level + 1 });
-      }
-    });
-  }
-
-  // Calculate positions
-  const levelCounters: { [level: number]: number } = {};
-  const spacing = { x: nodeWidth + 120, y: nodeHeight + 160 };
-
-  const assignPosition = (nodeId: string, level: number) => {
-    if (positions[nodeId]) return positions[nodeId];
-
-    levelCounters[level] = (levelCounters[level] || 0) + 1;
-    const nodeIndex = levelCounters[level] - 1;
-    const totalNodesAtLevel = levelWidth[level];
-
-    let x, y;
-
-    if (isHorizontal) {
-      x = level * spacing.x;
-      y = (nodeIndex - (totalNodesAtLevel - 1) / 2) * spacing.y;
-    } else {
-      x = (nodeIndex - (totalNodesAtLevel - 1) / 2) * spacing.x;
-      y = level * spacing.y;
-    }
-
-    positions[nodeId] = { x, y, level };
-    return positions[nodeId];
-  };
-
-  // Assign positions using BFS again
-  const positionQueue = [{ id: rootNode.id, level: 0 }];
-  const positionVisited = new Set<string>();
-
-  while (positionQueue.length > 0) {
-    const { id, level } = positionQueue.shift()!;
-
-    if (positionVisited.has(id)) continue;
-    positionVisited.add(id);
-
-    assignPosition(id, level);
-
-    adjacencyList[id].forEach(childId => {
-      if (!positionVisited.has(childId)) {
-        positionQueue.push({ id: childId, level: level + 1 });
-      }
-    });
-  }
-
-  // Apply positions to nodes
-  nodes.forEach(node => {
-    const pos = positions[node.id] || { x: 0, y: 0, level: 0 };
-    node.position = { x: pos.x, y: pos.y };
-    node.targetPosition = isHorizontal ? ('left' as any) : ('top' as any);
-    node.sourcePosition = isHorizontal ? ('right' as any) : ('bottom' as any);
-
-    // Add level information to node data
-    node.data = {
-      ...node.data,
-      level: pos.level,
-      isRoot: pos.level === 0,
-    };
-  });
-
-  return { nodes, edges };
-};
+// Removed old getTreeLayout function - now using layoutAlgorithms.ts
 
 // Convert tree structure to React Flow nodes and edges
 const convertTreeToFlow = (treeNodes: TreeNode[], layoutDirection: 'TB' | 'LR' = 'TB'): { nodes: FlowNode[], edges: FlowEdge[] } => {
@@ -187,41 +75,42 @@ const convertTreeToFlow = (treeNodes: TreeNode[], layoutDirection: 'TB' | 'LR' =
         const parentType = parentKind.toLowerCase();
         const childType = childKind.toLowerCase();
 
-        // Strong ownership relationships
+        // All edges now use consistent light gray colors
+        // Strong ownership relationships - slightly darker gray
         if ((parentType === 'cluster' && childType === 'component') ||
             (parentType === 'component' && childType === 'instance') ||
             (parentType === 'deployment' && childType === 'replicaset') ||
             (parentType === 'replicaset' && childType === 'pod')) {
           return {
             type: 'smoothstep',
-            style: { stroke: '#1890ff', strokeWidth: 3 },
+            style: { stroke: '#999', strokeWidth: 3 }, // Changed from blue to medium gray
             animated: false,
           };
         }
 
-        // Service relationships
+        // Service relationships - dashed light gray
         if (parentType === 'service' || childType === 'service') {
           return {
             type: 'smoothstep',
-            style: { stroke: '#722ed1', strokeWidth: 2, strokeDasharray: '5,5' },
+            style: { stroke: '#aaa', strokeWidth: 2, strokeDasharray: '5,5' }, // Changed from purple to light gray
             animated: false,
           };
         }
 
-        // Config relationships
+        // Config relationships - dotted light gray
         if (parentType === 'configmap' || parentType === 'secret' ||
             childType === 'configmap' || childType === 'secret') {
           return {
             type: 'smoothstep',
-            style: { stroke: '#faad14', strokeWidth: 2, strokeDasharray: '3,3' },
+            style: { stroke: '#ccc', strokeWidth: 2, strokeDasharray: '3,3' }, // Changed from yellow to very light gray
             animated: false,
           };
         }
 
-        // Default relationship
+        // Default relationship - standard light gray
         return {
           type: 'smoothstep',
-          style: { stroke: '#52c41a', strokeWidth: 2 },
+          style: { stroke: '#bbb', strokeWidth: 2 }, // Changed from green to light gray
           animated: false,
         };
       };
@@ -255,11 +144,13 @@ const convertTreeToFlow = (treeNodes: TreeNode[], layoutDirection: 'TB' | 'LR' =
 interface ResourceFlowProps {
   treeNodes?: TreeNode[];
   loading?: boolean;
+  layoutAlgorithm?: LayoutAlgorithm;
 }
 
 const ResourceFlow: React.FC<ResourceFlowProps> = ({
   treeNodes,
   loading,
+  layoutAlgorithm = 'hierarchical',
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -277,12 +168,17 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
       const { nodes: flowNodes, edges: flowEdges } = convertTreeToFlow(treeNodes, layoutDirection);
       console.log('Converted to flow nodes:', flowNodes.length, 'edges:', flowEdges.length);
 
-      // Apply tree layout
-      const { nodes: layoutedNodes, edges: layoutedEdges } = getTreeLayout(
-        flowNodes,
-        flowEdges,
-        layoutDirection
-      );
+      // Apply layout using selected algorithm
+      const config: LayoutConfig = {
+        nodeWidth: 280,
+        nodeHeight: 140,
+        horizontalSpacing: 140, // Slightly increased for better node separation
+        verticalSpacing: 280, // Increased from 160 to 280 for better layer separation
+        direction: layoutDirection
+      };
+
+      const layoutEngine = createLayoutEngine(layoutAlgorithm, config);
+      const { nodes: layoutedNodes, edges: layoutedEdges } = layoutEngine.layout(flowNodes, flowEdges);
 
       setNodes(layoutedNodes);
       setEdges(layoutedEdges);
@@ -413,12 +309,17 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
             </div>
           )}
 
-          {/* Layout Type */}
+          {/* Layout Algorithm */}
           <div style={{ marginBottom: '8px', fontSize: '11px', color: '#8c8c8c', fontWeight: '500' }}>
-            LAYOUT TYPE
+            LAYOUT ALGORITHM
           </div>
-          <div style={{ marginBottom: '12px', fontSize: '12px', color: '#666' }}>
-            🌲 Tree Structure
+          <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
+            {layoutAlgorithm === 'hierarchical' ? '📊 Hierarchical' :
+             layoutAlgorithm === 'reingold-tilford' ? '🌳 Tree (RT)' :
+             layoutAlgorithm === 'force-directed' ? '⚡ Force' : '🎯 Radial'}
+          </div>
+          <div style={{ marginBottom: '12px', fontSize: '10px', color: '#999' }}>
+            📏 Layer spacing: 280px | Node spacing: 140px
           </div>
 
           {/* Direction Controls */}
@@ -462,30 +363,35 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
             </button>
           </div>
 
-          {/* Legend */}
+          {/* Resource Type Colors Legend */}
           <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
             <div style={{ marginBottom: '6px', fontSize: '11px', color: '#8c8c8c', fontWeight: '500' }}>
-              LEGEND
+              RESOURCE TYPES
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
-                <div style={{ width: '12px', height: '3px', background: '#1890ff', marginRight: '6px', borderRadius: '2px' }}></div>
-                Strong ownership
+                <div style={{ width: '10px', height: '10px', background: '#e6f7ff', border: '1px solid #1890ff', marginRight: '6px', borderRadius: '2px' }}></div>
+                Workload
               </div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
-                <div style={{
-                  width: '12px',
-                  height: '3px',
-                  background: '#722ed1',
-                  marginRight: '6px',
-                  borderRadius: '2px',
-                  backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, white 2px, white 3px)'
-                }}></div>
-                Service relation
+                <div style={{ width: '10px', height: '10px', background: '#f9f0ff', border: '1px solid #722ed1', marginRight: '6px', borderRadius: '2px' }}></div>
+                Network
               </div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
-                <div style={{ width: '12px', height: '3px', background: '#52c41a', marginRight: '6px', borderRadius: '2px' }}></div>
-                Default relation
+                <div style={{ width: '10px', height: '10px', background: '#feffe6', border: '1px solid #fadb14', marginRight: '6px', borderRadius: '2px' }}></div>
+                Config
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
+                <div style={{ width: '10px', height: '10px', background: '#f6ffed', border: '1px solid #52c41a', marginRight: '6px', borderRadius: '2px' }}></div>
+                Storage
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
+                <div style={{ width: '10px', height: '10px', background: '#e6fffb', border: '1px solid #13c2c2', marginRight: '6px', borderRadius: '2px' }}></div>
+                KubeBlocks
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
+                <div style={{ width: '10px', height: '10px', background: '#f6f2ed', border: '1px solid #a0845c', marginRight: '6px', borderRadius: '2px' }}></div>
+                Backup
               </div>
             </div>
           </div>

@@ -114,20 +114,106 @@ const getStatusColor = (status?: string) => {
   }
 };
 
-// Get node styling based on level and type
-const getNodeStyling = (level: number = 0, isRoot: boolean = false, isParent: boolean = false): React.CSSProperties => {
+// Get resource type color theme
+const getResourceTypeColors = (resourceKind: string) => {
+  const kind = resourceKind.toLowerCase();
+
+  // Core Kubernetes workload resources - Blue theme
+  if (['pod', 'deployment', 'replicaset', 'statefulset', 'daemonset', 'job', 'cronjob'].includes(kind)) {
+    return {
+      border: '#1890ff',
+      bg: '#e6f7ff',
+      shadow: 'rgba(24, 144, 255, 0.15)',
+      category: 'workload'
+    };
+  }
+
+  // Network resources - Purple theme
+  if (['service', 'ingress', 'networkpolicy'].includes(kind)) {
+    return {
+      border: '#722ed1',
+      bg: '#f9f0ff',
+      shadow: 'rgba(114, 46, 209, 0.15)',
+      category: 'network'
+    };
+  }
+
+  // Configuration resources - Yellow theme
+  if (['configmap', 'secret'].includes(kind)) {
+    return {
+      border: '#fadb14',
+      bg: '#feffe6',
+      shadow: 'rgba(250, 219, 20, 0.15)',
+      category: 'config'
+    };
+  }
+
+  // Storage resources - Green theme
+  if (['persistentvolumeclaim', 'pvc', 'persistentvolume', 'pv', 'storageclass'].includes(kind)) {
+    return {
+      border: '#52c41a',
+      bg: '#f6ffed',
+      shadow: 'rgba(82, 196, 26, 0.15)',
+      category: 'storage'
+    };
+  }
+
+  // KubeBlocks cluster resources - Cyan theme
+  if (['cluster', 'component', 'instance', 'instanceset'].includes(kind)) {
+    return {
+      border: '#13c2c2',
+      bg: '#e6fffb',
+      shadow: 'rgba(19, 194, 194, 0.15)',
+      category: 'kubeblocks-cluster'
+    };
+  }
+
+  // KubeBlocks backup resources - Brown theme
+  if (['backup', 'backuppolicy', 'backupschedule', 'restore'].includes(kind)) {
+    return {
+      border: '#a0845c',
+      bg: '#f6f2ed',
+      shadow: 'rgba(160, 132, 92, 0.15)',
+      category: 'kubeblocks-backup'
+    };
+  }
+
+  // KubeBlocks operations - Magenta theme
+  if (['opsrequest'].includes(kind)) {
+    return {
+      border: '#eb2f96',
+      bg: '#fff0f6',
+      shadow: 'rgba(235, 47, 150, 0.15)',
+      category: 'kubeblocks-ops'
+    };
+  }
+
+  // Default - Gray theme
+  return {
+    border: '#d9d9d9',
+    bg: '#fafafa',
+    shadow: 'rgba(0, 0, 0, 0.1)',
+    category: 'default'
+  };
+};
+
+// Get node styling based on resource type
+const getNodeStyling = (level: number = 0, isRoot: boolean = false, isParent: boolean = false, resourceKind?: string): React.CSSProperties => {
   const baseStyle: React.CSSProperties = {
     minWidth: 220,
     maxWidth: 280,
   };
 
+  // Get colors based on resource type
+  const colors = resourceKind ? getResourceTypeColors(resourceKind) : getResourceTypeColors('default');
+
   if (isRoot) {
     return {
       ...baseStyle,
-      border: '3px solid #1890ff',
+      border: `3px solid ${colors.border}`,
       borderRadius: 12,
-      backgroundColor: '#f0f8ff',
-      boxShadow: '0 4px 16px rgba(24, 144, 255, 0.3)',
+      backgroundColor: colors.bg,
+      boxShadow: `0 4px 16px ${colors.shadow}`,
       transform: 'scale(1.05)',
     };
   }
@@ -135,25 +221,14 @@ const getNodeStyling = (level: number = 0, isRoot: boolean = false, isParent: bo
   if (isParent) {
     return {
       ...baseStyle,
-      border: '2px solid #52c41a',
+      border: `2px solid ${colors.border}`,
       borderRadius: 10,
-      backgroundColor: '#f6ffed',
-      boxShadow: '0 3px 12px rgba(82, 196, 26, 0.2)',
+      backgroundColor: colors.bg,
+      boxShadow: `0 3px 12px ${colors.shadow}`,
     };
   }
 
-  // Level-based styling
-  const levelColors = [
-    { border: '#d9d9d9', bg: '#ffffff', shadow: 'rgba(0, 0, 0, 0.1)' },
-    { border: '#b7eb8f', bg: '#f6ffed', shadow: 'rgba(82, 196, 26, 0.1)' },
-    { border: '#91d5ff', bg: '#e6f7ff', shadow: 'rgba(24, 144, 255, 0.1)' },
-    { border: '#ffd6cc', bg: '#fff2e8', shadow: 'rgba(250, 84, 28, 0.1)' },
-    { border: '#efdbff', bg: '#f9f0ff', shadow: 'rgba(114, 46, 209, 0.1)' },
-  ];
-
-  const colorIndex = Math.min(level, levelColors.length - 1);
-  const colors = levelColors[colorIndex];
-
+  // Regular node styling with resource type colors
   return {
     ...baseStyle,
     border: `1px solid ${colors.border}`,
@@ -165,7 +240,7 @@ const getNodeStyling = (level: number = 0, isRoot: boolean = false, isParent: bo
 
 const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
   const { resource, isParent = false, level = 0, isRoot = false, layoutDirection = 'TB' } = data;
-  const nodeStyle = getNodeStyling(level, isRoot, isParent);
+  const nodeStyle = getNodeStyling(level, isRoot, isParent, resource.kind);
 
   // Determine handle positions based on layout direction
   const isHorizontal = layoutDirection === 'LR';
@@ -193,19 +268,19 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
       >
         {/* Header with icon and basic info */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ marginRight: 10, fontSize: 18 }}>
+          <div style={{ marginRight: 10, fontSize: 20 }}>
             {getResourceIcon(resource.kind)}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{
               fontWeight: isRoot ? 'bold' : 'normal',
-              fontSize: isRoot ? 15 : 14,
+              fontSize: isRoot ? 17 : 16,
               color: isRoot ? '#1890ff' : '#262626',
               marginBottom: 2,
             }}>
               {resource.name}
             </div>
-            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+            <div style={{ fontSize: 13, color: '#8c8c8c' }}>
               {resource.kind}
               {level > 0 && (
                 <span style={{ marginLeft: 8, color: '#bfbfbf' }}>
@@ -229,10 +304,10 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
 
         {/* Tags section */}
         <div style={{ marginBottom: 8, minHeight: 24 }}>
-          {resource.namespace && (
+          {resource.namespace && isRoot && (
             <Tag
               color="blue"
-              style={{ fontSize: '11px', marginBottom: 4 }}
+              style={{ fontSize: '12px', marginBottom: 4 }}
             >
               📁 {resource.namespace}
             </Tag>
@@ -240,7 +315,7 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
           {resource.status && resource.kind.toLowerCase() !== 'configmap' && (
             <Tag
               color={getStatusColor(resource.status)}
-              style={{ fontSize: '11px', marginBottom: 4 }}
+              style={{ fontSize: '12px', marginBottom: 4 }}
             >
               {resource.status}
             </Tag>
@@ -248,7 +323,7 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
           {isRoot && (
             <Tag
               color="gold"
-              style={{ fontSize: '11px', marginBottom: 4 }}
+              style={{ fontSize: '12px', marginBottom: 4 }}
             >
               🌱 Root
             </Tag>
@@ -257,70 +332,12 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
           {resource.kind.toLowerCase() === 'pod' && resource.labels && resource.labels['kubeblocks.io/role'] && (
             <Tag
               color="purple"
-              style={{ fontSize: '11px', marginBottom: 4 }}
+              style={{ fontSize: '12px', marginBottom: 4 }}
             >
               🎭 {resource.labels['kubeblocks.io/role']}
             </Tag>
           )}
         </div>
-
-        {/* Detailed tooltip */}
-        <Tooltip
-          title={
-            <div style={{ maxWidth: 300 }}>
-              <div style={{ marginBottom: 8, fontWeight: 'bold', fontSize: '13px' }}>
-                {resource.kind}/{resource.name}
-              </div>
-              <div><strong>API Version:</strong> {resource.apiVersion}</div>
-              <div><strong>UID:</strong> <code style={{ fontSize: '11px' }}>{resource.uid}</code></div>
-              <div><strong>Created:</strong> {resource.creationTime}</div>
-              {resource.namespace && (
-                <div><strong>Namespace:</strong> {resource.namespace}</div>
-              )}
-              {resource.status && resource.kind.toLowerCase() !== 'configmap' && (
-                <div><strong>Status:</strong>
-                  <Tag color={getStatusColor(resource.status)} style={{ marginLeft: 4 }}>
-                    {resource.status}
-                  </Tag>
-                </div>
-              )}
-              {resource.labels && Object.keys(resource.labels).length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <strong>Labels:</strong>
-                  <div style={{ marginLeft: 8, fontSize: '11px', fontFamily: 'monospace' }}>
-                    {Object.entries(resource.labels).slice(0, 5).map(([key, value]) => (
-                      <div key={key} style={{ marginBottom: 2 }}>
-                        <span style={{ color: '#1890ff' }}>{key}:</span> {value}
-                      </div>
-                    ))}
-                    {Object.keys(resource.labels).length > 5 && (
-                      <div style={{ color: '#8c8c8c' }}>
-                        ... and {Object.keys(resource.labels).length - 5} more
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div style={{ marginTop: 8, fontSize: '11px', color: '#8c8c8c' }}>
-                💡 Click to expand details
-              </div>
-            </div>
-          }
-          placement="right"
-          overlayStyle={{ maxWidth: 350 }}
-        >
-          <div style={{
-            fontSize: 11,
-            color: '#bfbfbf',
-            cursor: 'pointer',
-            textAlign: 'center',
-            padding: '2px 0',
-            borderTop: '1px solid #f0f0f0',
-            marginTop: 4,
-          }}>
-            ℹ️ Details
-          </div>
-        </Tooltip>
       </Card>
 
       <Handle

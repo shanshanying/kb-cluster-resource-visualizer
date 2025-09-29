@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Alert, Spin, message } from 'antd';
+import { Layout, Typography, Alert, Spin, message, Radio, Card } from 'antd';
 import ResourceSelector from './components/ResourceSelector';
 import ResourceFlow from './components/ResourceFlow';
 import { TreeNode } from './types';
 import apiService from './services/api';
+
+export type LayoutAlgorithm = 'hierarchical' | 'reingold-tilford' ;
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -13,6 +15,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [healthStatus, setHealthStatus] = useState<'checking' | 'healthy' | 'error'>('checking');
   const [collapsed, setCollapsed] = useState(false);
+  const [layoutAlgorithm, setLayoutAlgorithm] = useState<LayoutAlgorithm>('reingold-tilford');
 
   useEffect(() => {
     checkHealth();
@@ -117,10 +120,41 @@ const App: React.FC = () => {
           }}
         >
           {!collapsed && (
-            <ResourceSelector
-              onResourceSelect={handleResourceSelect}
-              loading={loading}
-            />
+            <div style={{ padding: '16px 0' }}>
+              <ResourceSelector
+                onResourceSelect={handleResourceSelect}
+                loading={loading}
+              />
+
+              {/* Layout Algorithm Selector */}
+              <Card
+                title="🌳 Layout Algorithm"
+                size="small"
+                style={{ marginTop: 16 }}
+                bodyStyle={{ padding: '12px' }}
+              >
+                <Radio.Group
+                  value={layoutAlgorithm}
+                  onChange={(e) => setLayoutAlgorithm(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <Radio value="hierarchical">
+                      <span style={{ fontSize: '13px' }}>📊 Hierarchical</span>
+                      <div style={{ fontSize: '11px', color: '#666', marginLeft: 20 }}>
+                        Simple layered layout
+                      </div>
+                    </Radio>
+                    <Radio value="reingold-tilford">
+                      <span style={{ fontSize: '13px' }}>🌳 Tree (RT)</span>
+                      <div style={{ fontSize: '11px', color: '#666', marginLeft: 20 }}>
+                        Optimized tree layout
+                      </div>
+                    </Radio>
+                  </div>
+                </Radio.Group>
+              </Card>
+            </div>
           )}
         </Sider>
 
@@ -162,6 +196,7 @@ const App: React.FC = () => {
             <ResourceFlow
               treeNodes={treeNodes}
               loading={loading}
+              layoutAlgorithm={layoutAlgorithm}
             />
           )}
         </Content>

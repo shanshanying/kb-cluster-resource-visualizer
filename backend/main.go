@@ -363,19 +363,6 @@ func convertToResourceNode(resource unstructured.Unstructured) ResourceNode {
 		if statusMap, ok := statusObj.(map[string]interface{}); ok {
 			if phase, found, err := unstructured.NestedString(statusMap, "phase"); found && err == nil {
 				status = phase
-			} else if conditions, found, err := unstructured.NestedSlice(statusMap, "conditions"); found && err == nil {
-				for _, condition := range conditions {
-					if condMap, ok := condition.(map[string]interface{}); ok {
-						if condType, found, err := unstructured.NestedString(condMap, "type"); found && err == nil {
-							if condStatus, found, err := unstructured.NestedString(condMap, "status"); found && err == nil {
-								if condType == "Ready" && condStatus == "True" {
-									status = "Ready"
-									break
-								}
-							}
-						}
-					}
-				}
 			}
 		}
 	}
