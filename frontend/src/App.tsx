@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Alert, Spin, message, Switch } from 'antd';
+import { Layout, Typography, Alert, Spin, message } from 'antd';
 import ResourceSelector from './components/ResourceSelector';
 import ResourceFlow from './components/ResourceFlow';
-import { ResourceRelationship, TreeNode } from './types';
+import { TreeNode } from './types';
 import apiService from './services/api';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
 
 const App: React.FC = () => {
-  const [relationship, setRelationship] = useState<ResourceRelationship | undefined>();
   const [treeNodes, setTreeNodes] = useState<TreeNode[] | undefined>();
   const [loading, setLoading] = useState(false);
   const [healthStatus, setHealthStatus] = useState<'checking' | 'healthy' | 'error'>('checking');
   const [collapsed, setCollapsed] = useState(false);
-  const [useTreeLayout, setUseTreeLayout] = useState(true);
 
   useEffect(() => {
     checkHealth();
@@ -34,36 +32,21 @@ const App: React.FC = () => {
   const handleResourceSelect = async (resourceType: string, resourceName: string, namespace?: string) => {
     setLoading(true);
     try {
-      if (useTreeLayout) {
-        // Use tree structure API with selected resource as root node
-        console.log('Building resource tree with root node:', { resourceType, rootResource: resourceName, namespace });
-        const treeData = await apiService.getResourceTree(resourceType, resourceName, namespace);
-        console.log('Received tree data:', treeData);
-        setTreeNodes(treeData);
-        setRelationship(undefined); // Clear legacy data
+      // Use tree structure API with selected resource as root node
+      console.log('Building resource tree with root node:', { resourceType, rootResource: resourceName, namespace });
+      const treeData = await apiService.getResourceTree(resourceType, resourceName, namespace);
+      console.log('Received tree data:', treeData);
+      setTreeNodes(treeData);
 
-        if (treeData.length === 0) {
-          message.info(`No resource tree found with ${resourceType}/${resourceName} as root node`);
-        } else {
-          const totalNodes = countTreeNodes(treeData);
-          message.success(`Built resource tree with ${resourceType}/${resourceName} as root containing ${totalNodes} total nodes`);
-        }
+      if (treeData.length === 0) {
+        message.info(`No resource tree found with ${resourceType}/${resourceName} as root node`);
       } else {
-        // Use legacy relationship API
-        const relationshipData = await apiService.getResourceChildren(resourceType, resourceName, namespace);
-        setRelationship(relationshipData);
-        setTreeNodes(undefined); // Clear tree data
-
-        if (relationshipData.children.length === 0) {
-          message.info(`No child resources found for ${resourceType}/${resourceName}`);
-        } else {
-          message.success(`Found ${relationshipData.children.length} child resources`);
-        }
+        const totalNodes = countTreeNodes(treeData);
+        message.success(`Built resource tree with ${resourceType}/${resourceName} as root containing ${totalNodes} total nodes`);
       }
     } catch (error) {
       console.error('Failed to load resource data:', error);
       message.error('Failed to load resource data');
-      setRelationship(undefined);
       setTreeNodes(undefined);
     } finally {
       setLoading(false);
@@ -88,7 +71,7 @@ const App: React.FC = () => {
         justifyContent: 'space-between'
       }}>
         <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
-          K8s Resource Visualizer
+          Cluster Resource Visualizer
         </Title>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -177,10 +160,8 @@ const App: React.FC = () => {
             </div>
           ) : (
             <ResourceFlow
-              relationship={relationship}
               treeNodes={treeNodes}
               loading={loading}
-              useTreeLayout={useTreeLayout}
             />
           )}
         </Content>

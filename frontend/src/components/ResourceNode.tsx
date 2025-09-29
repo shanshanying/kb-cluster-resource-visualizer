@@ -172,6 +172,7 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
   const targetPosition = isHorizontal ? Position.Left : Position.Top;
   const sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
 
+
   return (
     <div style={nodeStyle}>
       <Handle
@@ -236,7 +237,7 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
               📁 {resource.namespace}
             </Tag>
           )}
-          {resource.status && (
+          {resource.status && resource.kind.toLowerCase() !== 'configmap' && (
             <Tag
               color={getStatusColor(resource.status)}
               style={{ fontSize: '11px', marginBottom: 4 }}
@@ -250,6 +251,15 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
               style={{ fontSize: '11px', marginBottom: 4 }}
             >
               🌱 Root
+            </Tag>
+          )}
+          {/* Display KubeBlocks role for Pods */}
+          {resource.kind.toLowerCase() === 'pod' && resource.labels && resource.labels['kubeblocks.io/role'] && (
+            <Tag
+              color="purple"
+              style={{ fontSize: '11px', marginBottom: 4 }}
+            >
+              🎭 {resource.labels['kubeblocks.io/role']}
             </Tag>
           )}
         </div>
@@ -267,7 +277,7 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
               {resource.namespace && (
                 <div><strong>Namespace:</strong> {resource.namespace}</div>
               )}
-              {resource.status && (
+              {resource.status && resource.kind.toLowerCase() !== 'configmap' && (
                 <div><strong>Status:</strong>
                   <Tag color={getStatusColor(resource.status)} style={{ marginLeft: 4 }}>
                     {resource.status}

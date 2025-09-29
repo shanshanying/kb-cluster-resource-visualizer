@@ -12,11 +12,10 @@ import ReactFlow, {
   Connection,
   MiniMap,
 } from 'reactflow';
-import dagre from 'dagre';
 import 'reactflow/dist/style.css';
 
 import ResourceNodeComponent from './ResourceNode';
-import { ResourceRelationship, TreeNode } from '../types';
+import { TreeNode } from '../types';
 import { FlowNode, FlowEdge } from '../types';
 
 const nodeTypes = {
@@ -30,49 +29,10 @@ const countTreeNodes = (nodes: TreeNode[]): number => {
   }, 0);
 };
 
-const dagreGraph = new dagre.graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 const nodeWidth = 280;
 const nodeHeight = 140;
 
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  const isHorizontal = direction === 'LR';
-  dagreGraph.setGraph({
-    rankdir: direction,
-    nodesep: 80,  // 同层节点间距
-    ranksep: 120, // 不同层级间距
-    marginx: 40,  // 图形边距
-    marginy: 40,
-  });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    node.targetPosition = isHorizontal ? ('left' as any) : ('top' as any);
-    node.sourcePosition = isHorizontal ? ('right' as any) : ('bottom' as any);
-
-    // We are shifting the dagre node position (anchor=center center) to the top left
-    // so it matches the React Flow node anchor point (top left).
-    node.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
-    };
-
-    return node;
-  });
-
-  return { nodes, edges };
-};
 
 // Tree layout algorithm for hierarchical tree structure
 const getTreeLayout = (nodes: Node[], edges: Edge[], direction = 'TB') => {
@@ -293,17 +253,13 @@ const convertTreeToFlow = (treeNodes: TreeNode[], layoutDirection: 'TB' | 'LR' =
 };
 
 interface ResourceFlowProps {
-  relationship?: ResourceRelationship;
   treeNodes?: TreeNode[];
   loading?: boolean;
-  useTreeLayout?: boolean;
 }
 
 const ResourceFlow: React.FC<ResourceFlowProps> = ({
-  relationship,
   treeNodes,
   loading,
-  useTreeLayout = false
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -316,7 +272,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
 
   useEffect(() => {
     // Handle tree structure data
-    if (useTreeLayout && treeNodes && treeNodes.length > 0) {
+    if (treeNodes && treeNodes.length > 0) {
       console.log('Processing tree nodes in ResourceFlow:', treeNodes);
       const { nodes: flowNodes, edges: flowEdges } = convertTreeToFlow(treeNodes, layoutDirection);
       console.log('Converted to flow nodes:', flowNodes.length, 'edges:', flowEdges.length);
@@ -333,60 +289,10 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
       return;
     }
 
-    // Handle legacy relationship data
-    if (!relationship) {
-      setNodes([]);
-      setEdges([]);
-      return;
-    }
-
-    const { parent, children } = relationship;
-
-    // Create nodes
-    const flowNodes: FlowNode[] = [
-      {
-        id: parent.uid,
-        type: 'resourceNode',
-        position: { x: 0, y: 0 },
-        data: {
-          resource: parent,
-          isParent: true,
-          layoutDirection: layoutDirection,
-        },
-      },
-      ...children.map((child) => ({
-        id: child.uid,
-        type: 'resourceNode',
-        position: { x: 0, y: 0 },
-        data: {
-          resource: child,
-          isParent: false,
-          layoutDirection: layoutDirection,
-        },
-      })),
-    ];
-
-    // Create edges with enhanced styling
-    const flowEdges: FlowEdge[] = children.map((child, index) => ({
-      id: `${parent.uid}-${child.uid}`,
-      source: parent.uid,
-      target: child.uid,
-      type: 'smoothstep',
-      style: { stroke: '#52c41a', strokeWidth: 2 },
-      animated: false,
-      label: index === 0 ? `${children.length}` : undefined,
-      labelStyle: { fontSize: 12, fontWeight: 'bold' },
-      labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
-    }));
-
-    // Apply layout
-    const { nodes: layoutedNodes, edges: layoutedEdges } = useTreeLayout
-      ? getTreeLayout(flowNodes, flowEdges, layoutDirection)
-      : getLayoutedElements(flowNodes, flowEdges, layoutDirection);
-
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [relationship, treeNodes, useTreeLayout, layoutDirection, setNodes, setEdges]);
+    // Clear nodes and edges if no tree data
+    setNodes([]);
+    setEdges([]);
+  }, [treeNodes, layoutDirection, setNodes, setEdges]);
 
   const onLayout = useCallback(
     (direction: 'TB' | 'LR') => {
@@ -411,9 +317,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
   }
 
   // Check if we have data to display
-  const hasData = useTreeLayout
-    ? (treeNodes && treeNodes.length > 0)
-    : (relationship && relationship.children.length > 0);
+  const hasData = treeNodes && treeNodes.length > 0;
 
   if (!hasData) {
     return (
@@ -425,11 +329,9 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
         fontSize: 16,
         color: '#666'
       }}>
-        {useTreeLayout
-          ? (treeNodes ? 'No resource tree found.' : 'Select a resource to use as root node for the tree visualization.')
-          : (relationship
-              ? 'No child resources found with ownerReference relationships.'
-              : 'Select a resource to visualize its relationships.')
+        {treeNodes
+          ? 'No resource tree found.'
+          : 'Select a resource to use as root node for the tree visualization.'
         }
       </div>
     );
@@ -491,7 +393,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
           </div>
 
           {/* Statistics */}
-          {useTreeLayout && treeNodes && treeNodes.length > 0 && (
+          {treeNodes && treeNodes.length > 0 && (
             <div style={{
               marginBottom: '12px',
               padding: '8px',
@@ -505,6 +407,9 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
               <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
                 🌱 {treeNodes.length} root node{treeNodes.length > 1 ? 's' : ''}
               </div>
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                🔗 {edges.length} edges
+              </div>
             </div>
           )}
 
@@ -513,7 +418,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
             LAYOUT TYPE
           </div>
           <div style={{ marginBottom: '12px', fontSize: '12px', color: '#666' }}>
-            {useTreeLayout ? '🌲 Tree Structure' : '📊 Dagre Algorithm'}
+            🌲 Tree Structure
           </div>
 
           {/* Direction Controls */}

@@ -10,10 +10,6 @@ export interface ResourceNode {
   status?: string;
 }
 
-export interface ResourceRelationship {
-  parent: ResourceNode;
-  children: ResourceNode[];
-}
 
 export interface TreeNode {
   resource: {
