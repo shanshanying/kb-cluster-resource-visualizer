@@ -5,7 +5,7 @@ import ResourceFlow from './components/ResourceFlow';
 import { TreeNode } from './types';
 import apiService from './services/api';
 
-export type LayoutAlgorithm = 'hierarchical' | 'reingold-tilford' ;
+export type LayoutAlgorithm = 'hierarchical' | 'reingold-tilford' | 'enhanced-tree';
 
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
@@ -149,6 +149,12 @@ const App: React.FC = () => {
                       <span style={{ fontSize: '13px' }}>🌳 Tree (RT)</span>
                       <div style={{ fontSize: '11px', color: '#666', marginLeft: 20 }}>
                         Optimized tree layout
+                      </div>
+                    </Radio>
+                    <Radio value="enhanced-tree">
+                      <span style={{ fontSize: '13px' }}>🌲 Enhanced Tree</span>
+                      <div style={{ fontSize: '11px', color: '#666', marginLeft: 20 }}>
+                        No edge overlaps
                       </div>
                     </Radio>
                   </div>

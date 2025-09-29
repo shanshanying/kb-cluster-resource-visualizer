@@ -1,6 +1,6 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Card, Tag, Tooltip, Badge } from 'antd';
+import { Card, Tag, Badge } from 'antd';
 import {
   DatabaseOutlined,
   CloudServerOutlined,
@@ -198,7 +198,7 @@ const getResourceTypeColors = (resourceKind: string) => {
 };
 
 // Get node styling based on resource type
-const getNodeStyling = (level: number = 0, isRoot: boolean = false, isParent: boolean = false, resourceKind?: string): React.CSSProperties => {
+const getNodeStyling = (_level: number = 0, isRoot: boolean = false, isParent: boolean = false, resourceKind?: string): React.CSSProperties => {
   const baseStyle: React.CSSProperties = {
     minWidth: 220,
     maxWidth: 280,
