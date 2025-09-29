@@ -49,4 +49,9 @@ export interface FlowEdge {
   source: string;
   target: string;
   type: string;
+  style?: React.CSSProperties;
+  animated?: boolean;
+  label?: string;
+  labelStyle?: React.CSSProperties;
+  labelBgStyle?: React.CSSProperties;
 }

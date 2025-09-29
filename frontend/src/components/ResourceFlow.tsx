@@ -33,8 +33,8 @@ const countTreeNodes = (nodes: TreeNode[]): number => {
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-const nodeWidth = 220;
-const nodeHeight = 120;
+const nodeWidth = 280;
+const nodeHeight = 140;
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
   const isHorizontal = direction === 'LR';
@@ -121,7 +121,7 @@ const getTreeLayout = (nodes: Node[], edges: Edge[], direction = 'TB') => {
 
   // Calculate positions
   const levelCounters: { [level: number]: number } = {};
-  const spacing = { x: nodeWidth + 50, y: nodeHeight + 80 };
+  const spacing = { x: nodeWidth + 60, y: nodeHeight + 100 };
 
   const assignPosition = (nodeId: string, level: number) => {
     if (positions[nodeId]) return positions[nodeId];
@@ -214,13 +214,62 @@ const convertTreeToFlow = (treeNodes: TreeNode[]): { nodes: FlowNode[], edges: F
     });
 
     // Process children and create edges
-    treeNode.children.forEach(childNode => {
+    treeNode.children.forEach((childNode, index) => {
+      // Determine edge style based on resource types
+      const getEdgeStyle = (parentKind: string, childKind: string) => {
+        const parentType = parentKind.toLowerCase();
+        const childType = childKind.toLowerCase();
+
+        // Strong ownership relationships
+        if ((parentType === 'cluster' && childType === 'component') ||
+            (parentType === 'component' && childType === 'instance') ||
+            (parentType === 'deployment' && childType === 'replicaset') ||
+            (parentType === 'replicaset' && childType === 'pod')) {
+          return {
+            type: 'smoothstep',
+            style: { stroke: '#1890ff', strokeWidth: 3 },
+            animated: false,
+          };
+        }
+
+        // Service relationships
+        if (parentType === 'service' || childType === 'service') {
+          return {
+            type: 'smoothstep',
+            style: { stroke: '#722ed1', strokeWidth: 2, strokeDasharray: '5,5' },
+            animated: false,
+          };
+        }
+
+        // Config relationships
+        if (parentType === 'configmap' || parentType === 'secret' ||
+            childType === 'configmap' || childType === 'secret') {
+          return {
+            type: 'smoothstep',
+            style: { stroke: '#faad14', strokeWidth: 2, strokeDasharray: '3,3' },
+            animated: false,
+          };
+        }
+
+        // Default relationship
+        return {
+          type: 'smoothstep',
+          style: { stroke: '#52c41a', strokeWidth: 2 },
+          animated: false,
+        };
+      };
+
+      const edgeStyle = getEdgeStyle(treeNode.resource.kind, childNode.resource.kind);
+
       // Create edge from parent to child
       flowEdges.push({
         id: `${treeNode.resource.metadata.uid}-${childNode.resource.metadata.uid}`,
         source: treeNode.resource.metadata.uid,
         target: childNode.resource.metadata.uid,
-        type: 'smoothstep',
+        ...edgeStyle,
+        label: index === 0 ? `${treeNode.children.length}` : undefined,
+        labelStyle: { fontSize: 12, fontWeight: 'bold' },
+        labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
       });
 
       // Recursively process child
@@ -308,12 +357,17 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
       })),
     ];
 
-    // Create edges
-    const flowEdges: FlowEdge[] = children.map((child) => ({
+    // Create edges with enhanced styling
+    const flowEdges: FlowEdge[] = children.map((child, index) => ({
       id: `${parent.uid}-${child.uid}`,
       source: parent.uid,
       target: child.uid,
       type: 'smoothstep',
+      style: { stroke: '#52c41a', strokeWidth: 2 },
+      animated: false,
+      label: index === 0 ? `${children.length}` : undefined,
+      labelStyle: { fontSize: 12, fontWeight: 'bold' },
+      labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
     }));
 
     // Apply layout
@@ -388,63 +442,139 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
         <Controls />
         <MiniMap
           nodeColor={(node) => {
-            if (node.data?.isParent) return '#1890ff';
-            return '#f0f0f0';
+            if (node.data?.isRoot) return '#1890ff';
+            if (node.data?.isParent) return '#52c41a';
+            const level = node.data?.level || 0;
+            const levelColors = ['#f0f0f0', '#f6ffed', '#e6f7ff', '#fff2e8', '#f9f0ff'];
+            return levelColors[Math.min(level, levelColors.length - 1)];
           }}
-          nodeStrokeWidth={3}
+          nodeStrokeColor={(node) => {
+            if (node.data?.isRoot) return '#1890ff';
+            if (node.data?.isParent) return '#52c41a';
+            return '#d9d9d9';
+          }}
+          nodeStrokeWidth={2}
+          maskColor="rgba(240, 248, 255, 0.8)"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            border: '1px solid #d9d9d9',
+          }}
         />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
 
-        {/* Layout controls */}
+        {/* Enhanced Layout Controls */}
         <div style={{
           position: 'absolute',
-          top: 10,
-          right: 10,
+          top: 15,
+          right: 15,
           zIndex: 4,
-          background: 'white',
-          padding: '8px',
-          borderRadius: '4px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          background: 'rgba(255, 255, 255, 0.95)',
+          padding: '12px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(0, 0, 0, 0.1)',
+          minWidth: 200,
         }}>
-          <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
-            🌳 Layout: {useTreeLayout ? 'Tree Structure' : 'Dagre'}
-            {useTreeLayout && treeNodes && treeNodes.length > 0 && (
-              <div style={{ marginTop: '4px', fontSize: '11px', color: '#999' }}>
-                📊 {countTreeNodes(treeNodes)} nodes
-              </div>
-            )}
+          {/* Header */}
+          <div style={{ marginBottom: '12px', fontSize: '13px', fontWeight: '600', color: '#262626' }}>
+            🌳 Tree Visualization
           </div>
-          <button
-            onClick={() => onLayout('TB')}
-            style={{
-              marginRight: 8,
-              padding: '4px 10px',
-              border: layoutDirection === 'TB' ? '2px solid #1890ff' : '1px solid #d9d9d9',
-              background: layoutDirection === 'TB' ? '#e6f7ff' : 'white',
-              color: layoutDirection === 'TB' ? '#1890ff' : '#666',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: layoutDirection === 'TB' ? '500' : 'normal',
-            }}
-          >
-            ⬇️ Vertical
-          </button>
-          <button
-            onClick={() => onLayout('LR')}
-            style={{
-              padding: '4px 10px',
-              border: layoutDirection === 'LR' ? '2px solid #1890ff' : '1px solid #d9d9d9',
-              background: layoutDirection === 'LR' ? '#e6f7ff' : 'white',
-              color: layoutDirection === 'LR' ? '#1890ff' : '#666',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: layoutDirection === 'LR' ? '500' : 'normal',
-            }}
-          >
-            ➡️ Horizontal
-          </button>
+
+          {/* Statistics */}
+          {useTreeLayout && treeNodes && treeNodes.length > 0 && (
+            <div style={{
+              marginBottom: '12px',
+              padding: '8px',
+              background: '#f0f8ff',
+              borderRadius: '6px',
+              border: '1px solid #e6f7ff'
+            }}>
+              <div style={{ fontSize: '11px', color: '#1890ff', fontWeight: '500' }}>
+                📊 {countTreeNodes(treeNodes)} total nodes
+              </div>
+              <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                🌱 {treeNodes.length} root node{treeNodes.length > 1 ? 's' : ''}
+              </div>
+            </div>
+          )}
+
+          {/* Layout Type */}
+          <div style={{ marginBottom: '8px', fontSize: '11px', color: '#8c8c8c', fontWeight: '500' }}>
+            LAYOUT TYPE
+          </div>
+          <div style={{ marginBottom: '12px', fontSize: '12px', color: '#666' }}>
+            {useTreeLayout ? '🌲 Tree Structure' : '📊 Dagre Algorithm'}
+          </div>
+
+          {/* Direction Controls */}
+          <div style={{ marginBottom: '8px', fontSize: '11px', color: '#8c8c8c', fontWeight: '500' }}>
+            DIRECTION
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              onClick={() => onLayout('TB')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                border: layoutDirection === 'TB' ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                background: layoutDirection === 'TB' ? '#e6f7ff' : 'white',
+                color: layoutDirection === 'TB' ? '#1890ff' : '#666',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: layoutDirection === 'TB' ? '600' : '400',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              ⬇️ Vertical
+            </button>
+            <button
+              onClick={() => onLayout('LR')}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                border: layoutDirection === 'LR' ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                background: layoutDirection === 'LR' ? '#e6f7ff' : 'white',
+                color: layoutDirection === 'LR' ? '#1890ff' : '#666',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: layoutDirection === 'LR' ? '600' : '400',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              ➡️ Horizontal
+            </button>
+          </div>
+
+          {/* Legend */}
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
+            <div style={{ marginBottom: '6px', fontSize: '11px', color: '#8c8c8c', fontWeight: '500' }}>
+              LEGEND
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
+                <div style={{ width: '12px', height: '3px', background: '#1890ff', marginRight: '6px', borderRadius: '2px' }}></div>
+                Strong ownership
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
+                <div style={{
+                  width: '12px',
+                  height: '3px',
+                  background: '#722ed1',
+                  marginRight: '6px',
+                  borderRadius: '2px',
+                  backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 2px, white 2px, white 3px)'
+                }}></div>
+                Service relation
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '10px', color: '#666' }}>
+                <div style={{ width: '12px', height: '3px', background: '#52c41a', marginRight: '6px', borderRadius: '2px' }}></div>
+                Default relation
+              </div>
+            </div>
+          </div>
         </div>
       </ReactFlow>
     </div>
