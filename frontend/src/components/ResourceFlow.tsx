@@ -172,8 +172,8 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
       const config: LayoutConfig = {
         nodeWidth: 280,
         nodeHeight: 140,
-        horizontalSpacing: 140, // Slightly increased for better node separation
-        verticalSpacing: 280, // Increased from 160 to 280 for better layer separation
+        horizontalSpacing: 80, // Reduced from 140 to 80 for closer node spacing
+        verticalSpacing: 180, // Reduced from 280 to 180 for closer layer spacing
         direction: layoutDirection
       };
 
@@ -316,10 +316,11 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
           <div style={{ marginBottom: '8px', fontSize: '12px', color: '#666' }}>
             {layoutAlgorithm === 'hierarchical' ? '📊 Hierarchical' :
              layoutAlgorithm === 'reingold-tilford' ? '🌳 Tree (RT)' :
+             layoutAlgorithm === 'enhanced-tree' ? '🌲 Enhanced Tree' :
              layoutAlgorithm === 'force-directed' ? '⚡ Force' : '🎯 Radial'}
           </div>
           <div style={{ marginBottom: '12px', fontSize: '10px', color: '#999' }}>
-            📏 Layer spacing: 280px | Node spacing: 140px
+            📏 Layer spacing: 180px | Node spacing: 80px
           </div>
 
           {/* Direction Controls */}
