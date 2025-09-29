@@ -38,7 +38,13 @@ const nodeHeight = 140;
 
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
   const isHorizontal = direction === 'LR';
-  dagreGraph.setGraph({ rankdir: direction });
+  dagreGraph.setGraph({
+    rankdir: direction,
+    nodesep: 80,  // 同层节点间距
+    ranksep: 120, // 不同层级间距
+    marginx: 40,  // 图形边距
+    marginy: 40,
+  });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -121,7 +127,7 @@ const getTreeLayout = (nodes: Node[], edges: Edge[], direction = 'TB') => {
 
   // Calculate positions
   const levelCounters: { [level: number]: number } = {};
-  const spacing = { x: nodeWidth + 60, y: nodeHeight + 100 };
+  const spacing = { x: nodeWidth + 120, y: nodeHeight + 160 };
 
   const assignPosition = (nodeId: string, level: number) => {
     if (positions[nodeId]) return positions[nodeId];
@@ -182,7 +188,7 @@ const getTreeLayout = (nodes: Node[], edges: Edge[], direction = 'TB') => {
 };
 
 // Convert tree structure to React Flow nodes and edges
-const convertTreeToFlow = (treeNodes: TreeNode[]): { nodes: FlowNode[], edges: FlowEdge[] } => {
+const convertTreeToFlow = (treeNodes: TreeNode[], layoutDirection: 'TB' | 'LR' = 'TB'): { nodes: FlowNode[], edges: FlowEdge[] } => {
   const flowNodes: FlowNode[] = [];
   const flowEdges: FlowEdge[] = [];
 
@@ -210,6 +216,7 @@ const convertTreeToFlow = (treeNodes: TreeNode[]): { nodes: FlowNode[], edges: F
         isParent: isRoot,
         level: level,
         isRoot: isRoot,
+        layoutDirection: layoutDirection,
       },
     });
 
@@ -311,7 +318,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
     // Handle tree structure data
     if (useTreeLayout && treeNodes && treeNodes.length > 0) {
       console.log('Processing tree nodes in ResourceFlow:', treeNodes);
-      const { nodes: flowNodes, edges: flowEdges } = convertTreeToFlow(treeNodes);
+      const { nodes: flowNodes, edges: flowEdges } = convertTreeToFlow(treeNodes, layoutDirection);
       console.log('Converted to flow nodes:', flowNodes.length, 'edges:', flowEdges.length);
 
       // Apply tree layout
@@ -344,6 +351,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
         data: {
           resource: parent,
           isParent: true,
+          layoutDirection: layoutDirection,
         },
       },
       ...children.map((child) => ({
@@ -353,6 +361,7 @@ const ResourceFlow: React.FC<ResourceFlowProps> = ({
         data: {
           resource: child,
           isParent: false,
+          layoutDirection: layoutDirection,
         },
       })),
     ];

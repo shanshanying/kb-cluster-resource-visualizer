@@ -41,6 +41,7 @@ export interface FlowNode {
     isParent?: boolean;
     level?: number;
     isRoot?: boolean;
+    layoutDirection?: 'TB' | 'LR';
   };
 }
 

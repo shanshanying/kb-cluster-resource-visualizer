@@ -92,19 +92,6 @@ const App: React.FC = () => {
         </Title>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* Tree Layout Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '14px', color: '#666' }}>
-              Tree Layout:
-            </span>
-            <Switch
-              checked={useTreeLayout}
-              onChange={setUseTreeLayout}
-              checkedChildren="ON"
-              unCheckedChildren="OFF"
-            />
-          </div>
-
           {healthStatus === 'checking' && (
             <Spin size="small" />
           )}

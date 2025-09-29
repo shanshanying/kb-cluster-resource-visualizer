@@ -13,36 +13,14 @@ interface ResourceSelectorProps {
 }
 
 const COMMON_RESOURCE_TYPES = [
-  // Standard Kubernetes resources
-  'deployment',
-  'replicaset',
-  'statefulset',
-  'daemonset',
-  'pod',
-  'service',
-  'job',
-  'cronjob',
-  'configmap',
-  'secret',
-  'ingress',
-  'persistentvolumeclaim',
-
   // KubeBlocks custom resources
-  'cluster',
-  'component',
-  'backuppolicy',
-  'backup',
-  'backupschedule',
-  'restore',
-  'opsrequest',
-  'instance',
-  'instanceset'
+  'cluster'
 ];
 
 const ResourceSelector: React.FC<ResourceSelectorProps> = ({
   onResourceSelect
 }) => {
-  const [resourceType, setResourceType] = useState<string>('deployment');
+  const [resourceType, setResourceType] = useState<string>('cluster');
   const [namespace, setNamespace] = useState<string>('');
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [resources, setResources] = useState<ResourceNode[]>([]);

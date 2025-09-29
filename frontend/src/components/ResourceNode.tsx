@@ -28,6 +28,7 @@ interface ResourceNodeProps {
     isParent?: boolean;
     level?: number;
     isRoot?: boolean;
+    layoutDirection?: 'TB' | 'LR';
   };
 }
 
@@ -163,14 +164,19 @@ const getNodeStyling = (level: number = 0, isRoot: boolean = false, isParent: bo
 };
 
 const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
-  const { resource, isParent = false, level = 0, isRoot = false } = data;
+  const { resource, isParent = false, level = 0, isRoot = false, layoutDirection = 'TB' } = data;
   const nodeStyle = getNodeStyling(level, isRoot, isParent);
+
+  // Determine handle positions based on layout direction
+  const isHorizontal = layoutDirection === 'LR';
+  const targetPosition = isHorizontal ? Position.Left : Position.Top;
+  const sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
 
   return (
     <div style={nodeStyle}>
       <Handle
         type="target"
-        position={Position.Top}
+        position={targetPosition}
         style={{
           background: isRoot ? '#1890ff' : '#52c41a',
           border: '2px solid white',
@@ -309,7 +315,7 @@ const ResourceNodeComponent: React.FC<ResourceNodeProps> = ({ data }) => {
 
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={sourcePosition}
         style={{
           background: isRoot ? '#1890ff' : '#52c41a',
           border: '2px solid white',
